@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <meta charset="utf-8">
 <style>
@@ -23,18 +22,41 @@
 
 </style>
 <body>
+				<div id="choices"></div>
 <script src="https://d3js.org/d3.v5.min.js"></script>
 <script>
 
-var title = "Science vs Style - Daily Leanpub Book Sales";
+const columns = ["Tencent", "Waison", "CKLife", "Cowell", "portfolio_value"]
+
+var strategyOptions = ''
+for(let i=0; i<columns.length; i++){
+      var strategyOptions = strategyOptions.concat(`<option>${columns[i]}</option>`);
+ }
+
+const strat = `<strong>Strategy: </strong><select id="strategySelect">${strategyOptions}</select>`;
+
+const bench = `<strong>Benchmark: </strong><select id="benchmarkSelect">${strategyOptions}</select>`
+
+const update = `<button onclick="updateSB()">Update</button>`
+
+var choices = `${strat} ${bench} ${update}`
+
+document.getElementById("choices").innerHTML = choices
+
+//
+// Constants and Utilities
+//
 
 var margin = {top: 20, right: 20, bottom: 50, left: 50};
 var width = 960 - margin.left - margin.right;
 var priceChartHeight = 500 - margin.top;
 var tradeChartHeight = 250 - margin.bottom;
 
-
 var parsedtg = d3.timeParse("%Y-%m-%d");
+
+//
+// Scales and Axes
+//
 
 var x = d3.scaleTime().range([0, width]);
 var yPrice = d3.scaleLinear()
@@ -49,6 +71,42 @@ var xAxis = d3.axisBottom().scale(x);
 var priceYAxis = d3.axisLeft().scale(yPrice);
 
 var tradeYAxis = d3.axisLeft().scale(yTrade);
+  
+var strategy = "Tencent";
+var benchmark = "Waison";
+
+function updateSB() {
+var sSelect = document.getElementById("strategySelect");
+var si = sSelect.selectedIndex;
+var strategy = sSelect.options[si].text; 
+
+
+var bSelect = document.getElementById("benchmarkSelect");
+var bi = bSelect.selectedIndex;
+var benchmark = bSelect.options[bi].text;
+
+}
+
+//
+// SVG and Charts
+//
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", priceChartHeight + margin.top + tradeChartHeight + margin.bottom);
+
+var priceChart = svg.append("g")
+		.attr("id", "priceChart")
+    .attr("transform",
+        "translate(" + margin.left + "," + margin.top + ")");
+
+var tradeChart = svg.append("g")
+		.attr("id", "tradeChart")
+		.attr("transform",
+						`translate( ${margin.left} , ${margin.top + priceChartHeight + 15})`);
+//
+// Lines and Areas
+//
 
 var lineStrategy = d3.area()
     .curve(d3.curveBasis)
@@ -65,56 +123,44 @@ var area = d3.area()
     .x(function(d) { return x(d.dtg); })
     .y1(function(d) { return yPrice(d.strategy); });
 
-var svg = d3.select("body").append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", priceChartHeight + margin.top + tradeChartHeight + margin.bottom);
-  
-var priceChart = svg.append("g")
-		.attr("id", "priceChart")
-    .attr("transform",
-        "translate(" + margin.left + "," + margin.top + ")");
 
-var tradeChart = svg.append("g")
-		.attr("id", "tradeChart")
-		.attr("transform",
-						`translate( ${margin.left} , ${margin.top + priceChartHeight + 15})`);
+//
+// Trade Tooltip
+//
 
-var strategy = "Waison";
-var benchmark = "Tencent";
-
-
-
-var tooltip = tradeChart.append('g')
-	.attr("id", "tooltip")
+var tradeTooltip = tradeChart.append('g')
+	.attr("id", "tradeTooltip")
 	.attr('visibility', 'hidden');
 
-tooltip.append('rect')
-		.attr('id', 'bg')
+tradeTooltip.append('rect')
 		.attr('width', 150)
 		.attr('height', 55)
 		.attr("fill", "black");
 
-var tooltipText = tooltip.append("text")
+var tradeTooltipText = tradeTooltip.append("text")
 	.attr("fill", "white")
 	.attr("font-size", "smaller")
 	.attr('x', 5)
 	.attr('y', 15);
 
-tooltipText.append('tspan')
+tradeTooltipText.append('tspan')
 	.attr("id", "line1")
 	.attr('x', 10);
 
-tooltipText.append('tspan')
+tradeTooltipText.append('tspan')
 	.attr('id', 'line2')
 	.attr('dy', 15)
 	.attr('x', 10);
 
-tooltipText.append('tspan')
+tradeTooltipText.append('tspan')
 	.attr('id', 'line3')
 	.attr('dy', 15)
 	.attr('x', 10);
 
 
+//
+// Data Import and Dependent Actions
+//
 
 d3.csv("hk_stocks.csv").then(function(data) {
 	const strategyStart = +data[0][strategy];
@@ -179,6 +225,58 @@ yTrade.domain(tradeDomain = [-d3.max(tradeData, row => Math.abs(row.trade_value)
         .attr("class", "y axis")
         .call(priceYAxis);
 
+// priceTooltip is defined here instead of before so it is drawn over lines
+
+var priceTooltip = priceChart.append("g")
+	.attr("id", "priceTooltip")
+	.attr("visibility", "hidden");
+
+
+priceTooltip.append('rect')
+		.attr('width', 150)
+		.attr('height', 40)
+		.attr("fill", "black");
+
+var priceTooltipText = priceTooltip.append("text")
+	.attr("fill", "white")
+	.attr("font-size", "smaller")
+	.attr('x', 5)
+	.attr('y', 15);
+
+priceTooltipText.append('tspan')
+	.attr("id", "line1")
+	.attr('x', 10);
+
+priceTooltipText.append('tspan')
+	.attr('id', 'line2')
+	.attr('dy', 15)
+	.attr('x', 10);
+
+priceChart.on("mousemove", d => {
+  d3.select(d3.event.target);
+	priceTooltip
+		.attr("visibility", "visible")
+
+
+		.attr("transform", `translate(${d3.event.pageX - margin.left},${d3.event.pageY - margin.top})`);
+
+						priceTooltip	
+							.select('#line1')
+								.text(`${d3.event.pageX}`);
+						priceTooltip
+							.select('#line2')
+								.text(`${d3.event.pageY}`);
+});
+
+priceChart.on("mouseleave", function() { 
+					priceTooltip
+							.attr('visibility', 'hidden');
+});
+
+
+
+
+
 		tradeChart.append("g")
 				.attr("class", "y axis")
 				.call(tradeYAxis);
@@ -196,35 +294,37 @@ tradeChart.selectAll('.bar').data(tradeData)
 		.on('mouseover', d => {
 						d3.select(d3.event.target)
 							.attr("opacity", 0.6);
-						tooltip
+						tradeTooltip
 							.attr('visibility', 'visible')
 							.select('#line1')
 								.text(`${d.quantity > 0 ? 'Bought': 'Sold'} ${Math.abs(d.quantity)} ${d.asset}`);
 						
 						
-						tooltip
+						tradeTooltip
 							.select('#line2')
 								.text(`On ${d.Date} for ${d[d.asset]}`);
-						tooltip
+						tradeTooltip
 							.select('#line3')
 								.text(`Total Cost: \$${d.trade_value}`)
-						tooltip
+						tradeTooltip
 							.attr('transform', `translate(${x(new Date(d.Date)) -60}, -60)`);
 		})
 		.on('mousemove', d => {
-			tooltip
+			tradeTooltip
 				.attr('visibility', 'visible');
 		})
 		.on('mouseleave', d => {
 						d3.select(d3.event.target)
 							.attr('opacity', 1);
-						tooltip
+						tradeTooltip
 							.attr('visibility', 'hidden');
 		});
 
 
 });
 
+ 
 </script>
+
 </body>
 
