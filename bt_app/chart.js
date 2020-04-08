@@ -1,8 +1,8 @@
 /*
 Import Data
 */
-let strategy = 'tencent';
-let benchmark = 'waison';
+let strategy = 'Tencent';
+let benchmark = 'Waison';
 
 d3.csv('hk_stocks.csv')
   .then(function(data) {
@@ -10,30 +10,28 @@ d3.csv('hk_stocks.csv')
 	})
   .catch(function(error){
      alert('error');
-  })
+  });
 
 
 function render(data) {
-
-let namedvar = data[0];
 
 const width = 750;
 const margin = {top: 50, right: 50, bottom: 50, left:50};
 const priceChartHeight = 400;
 const tradeChartHeight = 250;
 
-var svg = d3.select('body')
+let svg = d3.select('body')
 	.append('svg')
 	.attr('viewBox', `0 0 750 600`);
 
-var priceChart = svg.append('g')
+let priceChart = svg.append('g')
 	.attr('id', 'priceChart')
 	.attr('transform', `translate(${margin.left},0)`)
 	.attr('width', width)
 	.attr('height', priceChartHeight)
-	.attr('fill', 'steelblue');
+	.datum(data);
 
-var tradeChart = svg.append('g')
+let tradeChart = svg.append('g')
 	.attr('id', 'tradeChart')
 	.attr('transform', `translate(${margin.left},${priceChartHeight+20})`)
 	.attr('width', width)
@@ -115,7 +113,7 @@ d3.select('#tradeChart').selectAll('.bar').data(tradeData)
 		.attr('class', 'bar')
 		.attr('x', d => x(new Date(d.Date)))
 		.attr('y', d => yTrade(Math.max(0, d.trade_value)))
-		.attr('width', 7)
+		.attr('width', 5)
 		.attr('height', d => Math.abs(yTrade(d.trade_value)- yTrade(0)))
 		.attr('fill', 'black')
 		.attr('stroke', 'black')
@@ -149,5 +147,52 @@ d3.select('#tradeChart').selectAll('.bar').data(tradeData)
 		});
 
 
+priceChart.append('clipPath')
+			.attr("id", "clip-above")
+		.append("path")
+			.attr('d', d3.area()
+			//	.x(d => x(new Date(d.Date)))
+				.y0(0));
+			//	.y1(d => yPrice(d[strategy]*100)));
+priceChart.append('clipPath')
+			.attr("id", "clip-below")
+		.append("path")
+			.attr("d", d3.area()
+			//	.x(d => x(new Date(d.Date)))
+				.y0(priceChartHeight));
+			//	.y1(d => yPrice(d[strategy])*100));
 
+
+
+priceChart.append("path")
+	.attr("class", "area above")
+	.attr("clip-path", "url(#clip-above)")
+	.attr("fill", "red")
+			.attr("d", d3.area()
+				//.x(d => x(new Date(d.Date)))
+				//.y0(priceChartHeight)
+				.y0(d => yPrice(d[benchmark]*100)));
+priceChart.append("path")
+	.attr("class", "area below")
+	.attr("clip-path", "url(#clip-below)")
+	.attr("fill", "green")
+			.attr("d", d3.area()
+				//.x(d => x(new Date(d.Date)))
+				//.y0(0)
+				.y0(d => yPrice(d[benchmark]*100)));
+
+priceChart.append("path")
+	.attr("fill", "none")
+	.attr("stroke", "gray")
+	.attr("stroke-width", 1.5)
+			.attr("d", d3.line()
+				.x(d => x(new Date(d.Date)))
+				.y(d => yPrice(d[benchmark]*100)));
+priceChart.append("path")
+	.attr("fill", "none")
+	.attr("stroke", "black")
+	.attr("stroke-width", 1.5)
+			.attr("d", d3.line()
+				.x(d => x(new Date(d.Date)))
+				.y(d => yPrice(d[strategy])));
 }

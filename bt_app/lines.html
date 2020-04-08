@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path { display: none; }
+
+.area.above { fill: rgb(252,141,89); }
+.area.below { fill: rgb(145,207,96); }
+
+.line {
+  fill: none;
+  stroke: #000;
+  stroke-width: 1.5px;
+}
+
+</style>
+<body>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script>
+
+var title = "Science vs Style - Daily Leanpub Book Sales";
+
+var margin = {top: 20, right: 20, bottom: 50, left: 50};
+var width = 960 - margin.left - margin.right;
+var priceChartHeight = 500 - margin.top;
+var tradeChartHeight = 250 - margin.bottom;
+
+
+var parsedtg = d3.timeParse("%Y-%m-%d");
+
+var x = d3.scaleTime().range([0, width]);
+var yPrice = d3.scaleLinear()
+	.range([priceChartHeight, 0]);
+
+var yTrade = d3.scaleLinear()
+	.range([tradeChartHeight/2, 0]);
+
+
+var xAxis = d3.axisBottom().scale(x);
+
+var priceYAxis = d3.axisLeft().scale(yPrice);
+
+var tradeYAxis = d3.axisLeft().scale(yTrade);
+
+var lineStrategy = d3.area()
+    .curve(d3.curveBasis)
+    .x(function(d) { return x(d.dtg); })
+    .y(function(d) { return yPrice(d.strategy); });
+
+var lineBenchmark = d3.area()
+    .curve(d3.curveBasis)
+    .x(function(d) { return x(d.dtg); })
+    .y(function(d) { return yPrice(d.benchmark); });
+
+var area = d3.area()
+    .curve(d3.curveBasis)
+    .x(function(d) { return x(d.dtg); })
+    .y1(function(d) { return yPrice(d.strategy); });
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", priceChartHeight + margin.top + tradeChartHeight + margin.bottom);
+  
+var priceChart = svg.append("g")
+		.attr("id", "priceChart")
+    .attr("transform",
+        "translate(" + margin.left + "," + margin.top + ")");
+
+var tradeChart = svg.append("g")
+		.attr("id", "tradeChart")
+		.attr("transform",
+						`translate( ${margin.left} , ${margin.top + priceChartHeight + 15})`);
+
+var strategy = "Waison";
+var benchmark = "Tencent";
+
+
+
+var tooltip = tradeChart.append('g')
+	.attr("id", "tooltip")
+	.attr('visibility', 'hidden');
+
+tooltip.append('rect')
+		.attr('id', 'bg')
+		.attr('width', 150)
+		.attr('height', 55)
+		.attr("fill", "black");
+
+var tooltipText = tooltip.append("text")
+	.attr("fill", "white")
+	.attr("font-size", "smaller")
+	.attr('x', 5)
+	.attr('y', 15);
+
+tooltipText.append('tspan')
+	.attr("id", "line1")
+	.attr('x', 10);
+
+tooltipText.append('tspan')
+	.attr('id', 'line2')
+	.attr('dy', 15)
+	.attr('x', 10);
+
+tooltipText.append('tspan')
+	.attr('id', 'line3')
+	.attr('dy', 15)
+	.attr('x', 10);
+
+
+
+d3.csv("hk_stocks.csv").then(function(data) {
+	const strategyStart = +data[0][strategy];
+	const benchmarkStart = +data[0][benchmark];
+
+  data.forEach(function(d) {
+      d.dtg = parsedtg(d.Date);
+      d.strategy = +d[strategy]/strategyStart;
+			d.benchmark = +d[benchmark]/benchmarkStart;
+  });
+
+
+var tradeData = data.filter(d => {
+	return d.asset != "";
+});
+
+
+x.domain(d3.extent(data, function(d) { return d.dtg; }));
+
+yPrice.domain([0,2]);
+
+yTrade.domain(tradeDomain = [-d3.max(tradeData, row => Math.abs(row.trade_value)), d3.max(tradeData, row => Math.abs(row.trade_value))]);
+
+    priceChart.datum(data);
+
+    priceChart.append("clipPath")
+        .attr("id", "clip-above")
+      .append("path")
+        .attr("d", area.y0(0));
+
+    priceChart.append("clipPath")
+        .attr("id", "clip-below")
+      .append("path")
+        .attr("d", area.y0(priceChartHeight));
+
+    priceChart.append("path")
+        .attr("class", "area above")
+        .attr("clip-path", "url(#clip-above)")
+				.attr("d", area.y0(function(d) { return yPrice(d.benchmark); }));
+
+    priceChart.append("path")
+        .attr("class", "area below")
+        .attr("clip-path", "url(#clip-below)")
+        .attr("d", area.y0(function(d) { return yPrice(d.benchmark); }));
+
+    priceChart.append("path")
+        .attr("class", "line")
+        .style("stroke", "darkgreen")
+        .attr("d", lineStrategy);
+
+    priceChart.append("path")
+        .attr("class", "line")
+        .style("stroke", "red")
+        .attr("d", lineBenchmark);
+
+    priceChart.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + priceChartHeight + ")")
+        .call(xAxis);
+
+    priceChart.append("g")
+        .attr("class", "y axis")
+        .call(priceYAxis);
+
+		tradeChart.append("g")
+				.attr("class", "y axis")
+				.call(tradeYAxis);
+
+tradeChart.selectAll('.bar').data(tradeData)
+	.enter()
+		.append('rect')
+		.attr('class', 'bar')
+		.attr('x', d => x(new Date(d.Date)))
+		.attr('y', d => yTrade(Math.max(0, d.trade_value)))
+		.attr('width', 5)
+		.attr('height', d => Math.abs(yTrade(d.trade_value)- yTrade(0)))
+		.attr('fill', 'black')
+		.attr('stroke', 'black')
+		.on('mouseover', d => {
+						d3.select(d3.event.target)
+							.attr("opacity", 0.6);
+						tooltip
+							.attr('visibility', 'visible')
+							.select('#line1')
+								.text(`${d.quantity > 0 ? 'Bought': 'Sold'} ${Math.abs(d.quantity)} ${d.asset}`);
+						
+						
+						tooltip
+							.select('#line2')
+								.text(`On ${d.Date} for ${d[d.asset]}`);
+						tooltip
+							.select('#line3')
+								.text(`Total Cost: \$${d.trade_value}`)
+						tooltip
+							.attr('transform', `translate(${x(new Date(d.Date)) -60}, -60)`);
+		})
+		.on('mousemove', d => {
+			tooltip
+				.attr('visibility', 'visible');
+		})
+		.on('mouseleave', d => {
+						d3.select(d3.event.target)
+							.attr('opacity', 1);
+						tooltip
+							.attr('visibility', 'hidden');
+		});
+
+
+});
+
+</script>
+</body>
+
