@@ -5,7 +5,6 @@
 body { font: 12px Arial;}
 
 path { 
-    stroke: grey;
     stroke-width: 2;
     fill: none;
 }
@@ -19,9 +18,18 @@ path {
 }
 
 
-#areaabove { fill: rgb(252,141,89); }
-#areabelow { fill: rgb(145,207,96); }
+#areaabove { fill: rgb(219, 0, 0); }
+#areabelow { fill: rgb(0, 171, 0); }
 
+.grid line {
+  stroke: lightgrey;
+  stroke-opacity: 0.7;
+  shape-rendering: crispEdges;
+}
+
+.grid path {
+  stroke-width: 0;
+}
 
 </style>
 <body>
@@ -53,9 +61,9 @@ document.getElementById("benchmarkSelect").selectedIndex = "4";
 
 // Set the dimensions of the canvas / graph
 var margin = {top: 20, right: 20, bottom: 50, left: 50};
-var width = 960 - margin.left - margin.right;
-var priceChartHeight = 500 - margin.top;
-var tradeChartHeight = 250 - margin.bottom;
+var width = 800 - margin.left - margin.right;
+var priceChartHeight = 400 - margin.top;
+var tradeChartHeight = 300 - margin.bottom;
 
 // Add SVG and Charts
 var svg = d3.select("body").append("svg")
@@ -84,9 +92,15 @@ var yTrade = d3.scaleLinear().range([tradeChartHeight/2, 0]);
 // Define the axes
 var xAxis = d3.axisBottom().scale(x);
 
-var yAxis = d3.axisLeft().scale(y);
+var yAxis = d3.axisLeft().scale(y).tickFormat(d3.format(".0%"));
 
-var tradeYAxis = d3.axisLeft().scale(yTrade);
+var tradeYAxis = d3.axisLeft().scale(yTrade).tickFormat(y =>`\$${y/1000}K`);
+
+// Gridlines
+function make_y_gridlines(yvar) {		
+    return d3.axisLeft(yvar)
+        .ticks(5)
+}
 
 // Trade Tooltip
 
@@ -188,7 +202,8 @@ d3.csv("hk_stocks.csv").then(function(data) {
     // Add the strategyLine path.
     priceChart.append("path")
         .attr("id", "strategyLine")
-        .style("stroke", "darkgreen")
+        .style("stroke", "black")
+        .style("stroke-width", "1.8")
         .attr("d", d3.line()	
                 .x(d => x(d.date))
                 .y(d => y(d.strategy)));
@@ -196,8 +211,9 @@ d3.csv("hk_stocks.csv").then(function(data) {
     // Add the benchmarkLine path.
     priceChart.append("path")
         .attr("id", "benchmarkLine")
-        .style("stroke", "red")
-        .attr("d", d3.line()	
+        .style("stroke", "gray")
+        .style("stroke-width", "1.5")
+        .attr("d", d3.line()
                 .x(d => x(d.date))
                 .y(d => y(d.benchmark)));
 
@@ -216,6 +232,12 @@ d3.csv("hk_stocks.csv").then(function(data) {
     tradeChart.append("g")
         .attr("class", "y axis")
         .call(tradeYAxis);
+
+    tradeChart.append("g")
+    .attr("class", "grid")
+        .call(make_y_gridlines(yTrade)
+          .tickSize(-width)
+          .tickFormat(""));
 
 
     // Trade Bars
