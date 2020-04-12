@@ -1,0 +1,15 @@
+.strategy {
+  fill: green;
+  font-family: serif;
+}
+.benchmark {
+  fill: red;
+  font-family: sans-serif;
+}
+.hide {
+  opacity: 0;
+  cursor: pointer;
+}
+.show {
+  opacity: 1;
+}
